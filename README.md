@@ -1,4 +1,4 @@
-# Sentiment Analysis Engine — Model Training Report
+<!-- # Sentiment Analysis Engine — Model Training Report
 
 ## Project Overview
 
@@ -254,4 +254,85 @@ Possible enhancements:
   * GRU
   * Transformers (BERT)
 * Real-time sentiment prediction API deployment
-* Web interface using Streamlit or Flask
+* Web interface using Streamlit or Flask -->
+
+
+# Cross-Domain Sentiment Analysis Engine: SVM Architecture
+
+## 📌 Project Overview
+This project implements a highly robust **Sentiment Analysis Engine** using Support Vector Machines (SVM). Instead of relying on a single sanitized dataset, this engine was designed to evaluate **Domain Shift** by training and testing across highly divergent text sources: formal movie reviews and informal social media text.
+
+The objective was to satisfy a 60% practical grade requirement by evaluating:
+* **Algorithm Efficiency:** Linear SVM vs. Kernel SVM (RBF)
+* **Cross-Domain Generalization:** IMDB (Formal) vs. Twitter (Informal)
+* **Advanced Feature Engineering:** TF-IDF + Heuristic Meta-Features
+* **Edge Case Handling:** Dealing with empty arrays, heavy slang, and extreme dimensionality.
+
+---
+
+## 💾 Dataset Architecture
+To prove cross-domain generalization, two fundamentally different datasets were used:
+1. **IMDB 50K Movie Reviews:** Long-form, highly formal, vocabulary-rich.
+2. **Sentiment140 (Twitter):** Short-form, sparse, heavy slang, and emoji-laden.
+3. **Combined Dataset:** A randomized, balanced mixture of both domains to create the ultimate generalized model.
+
+---
+
+## ⚙️ The Pipeline & Feature Engineering
+A `ColumnTransformer` pipeline was constructed to handle two distinct data streams simultaneously:
+
+**1. Text Vectorization (The Core):**
+*   **TF-IDF Vectorizer:** Max 5,000 features.
+*   **N-Grams:** Range (1, 2) utilized to capture contextual bigrams (e.g., "not good").
+*   **Cleaning:** Regex-based removal of HTML (`<br/>`), URLs, `@mentions`, and NLTK stopword filtering.
+
+**2. Meta-Feature Engineering (The Edge):**
+Extracted numerically *before* text cleaning and normalized via `StandardScaler`:
+*   `word_count` & `char_count`
+*   `exclamation_count` (!) & `question_count` (?)
+
+---
+
+## 📊 Cross-Domain Evaluation (The "Domain Shift" Matrix)
+The most critical finding of this engine was observing how models collapse when exposed to unseen domains. 
+
+### **F1-Score Matrix (Linear SVM)**
+| Trained On | Tested on IMDB | Tested on Twitter | Tested on Combined |
+| :--- | :--- | :--- | :--- |
+| **IMDB Only** | **0.887** | 0.615 *(Crash)* | 0.717 |
+| **Twitter Only**| 0.660 *(Crash)*| **0.770** | 0.755 |
+| **Combined** | **0.890** | **0.765** | **0.791 (Ultimate)**|
+
+**Observation:** A model trained purely on IMDB collapses on Twitter data (88% -> 61%). The model expects words like "cinematography" and fails to interpret tweets. Training on the **Combined Dataset** resulted in the most robust, real-world applicable model.
+
+---
+
+## 🧮 Algorithm Comparison: Linear vs. Kernel (RBF)
+Two algorithms were tested to evaluate computational cost vs. accuracy on sparse text matrices.
+
+### **Model 1: Linear SVM**
+*   **Accuracy (Combined):** 78.85%
+*   **Training Time:** ~7.35 seconds (on 150k rows)
+*   **Complexity:** $O(n)$
+
+### **Model 2: Kernel SVM (RBF)**
+*   **Accuracy (Combined):** 78.79%
+*   **Training Time:** ~521.62 seconds (using only a fraction of data to prevent thermal throttling).
+*   **Complexity:** $O(n^2)$ to $O(n^3)$
+
+### **Conclusion on Algorithms**
+The **Linear SVM** vastly outperformed the Kernel SVM. Text data vectorized via TF-IDF creates a highly dimensional, sparse space (5,000+ dimensions). In such spaces, the data is almost always linearly separable. The RBF Kernel's attempt to map this to infinite dimensions resulted in massive computational overhead (70x slower) with zero gain in F1-score, and in some cases, catastrophic overfitting.
+
+---
+
+## 🚀 Deployment via FastAPI
+The final `Linear_Combined` model was serialized via `joblib` and deployed using **FastAPI**, creating a RESTful endpoint (`/predict`) capable of ingesting raw JSON text, dynamically extracting meta-features, cleaning the string, and returning a binary sentiment classification in milliseconds.
+
+---
+
+## 🔮 Future Improvements & Deep Learning Caveat
+While this TF-IDF + SVM baseline proved highly efficient and scalable, it has inherent mathematical limitations:
+1.  **Context Loss:** TF-IDF fundamentally ignores sequential word order outside of specific n-grams.
+2.  **Sarcasm:** SVMs cannot parse complex negation or semantic sarcasm.
+
+**Next Steps:** As part of the broader AIML curriculum, the next logical evolution of this engine is to replace the SVM with a Deep Learning architecture—such as an **LSTM (Long Short-Term Memory)** network or a **Transformer (BERT)**—to capture sequential context natively, though at a significantly higher computational cost.

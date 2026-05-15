@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen font-sans text-gray-800">
+
+    <div class="max-w-4xl mx-auto pt-12 px-4">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-extrabold text-indigo-600 tracking-tight">Ensemble Sentiment Engine</h1>
+            <p class="text-gray-500 mt-2">Cross-Domain Evaluation using Linear & Kernel SVMs</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <label for="textInput" class="block text-sm font-medium text-gray-700 mb-2">Enter text (Review, Tweet,
+                etc.)</label>
+            <textarea id="textInput" rows="4"
+                class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                placeholder="e.g. The cinematography was brilliant, but the plot was honestly so boring..."></textarea>
+
+            <div class="mt-4 flex justify-between items-center">
+                <button onclick="analyzeText()" id="analyzeBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+                    Analyze Sentiment
+                </button>
+                <div id="loading" class="hidden">
+                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Features Section -->
+        <div id="metaContainer" class="hidden bg-white rounded-xl shadow-md p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Extracted Meta-Features</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="metaGrid">
+                <!-- Meta features injected here -->
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsContainer" class="hidden bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Model Predictions</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="predictionsGrid">
+                <!-- Predictions injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value;
+            if (!text.trim()) {
+                alert("Please enter some text first!");
+                return;
+            }
+
+            // UI State updates
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('resultsContainer').classList.add('hidden');
+            document.getElementById('metaContainer').classList.add('hidden');
+            document.getElementById('predictionsGrid').innerHTML = '';
+            document.getElementById('metaGrid').innerHTML = '';
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (!response.ok) throw new Error("Network response was not ok");
+
+                const data = await response.json();
+
+                // Populate Meta Features
+                const meta = data.meta_features;
+                const metaLabels = {
+                    'word_count': 'Word Count',
+                    'char_count': 'Character Count',
+                    'exclamation_count': 'Exclamation Marks (!)',
+                    'question_count': 'Question Marks (?)'
+                };
+
+                for (const [key, val] of Object.entries(meta)) {
+                    document.getElementById('metaGrid').innerHTML += `
+                        <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">${metaLabels[key]}</p>
+                            <p class="text-2xl font-bold text-indigo-600">${val}</p>
+                        </div>
+                    `;
+                }
+
+                // Populate Predictions
+                const predictions = data.predictions;
+                for (const [modelName, sentiment] of Object.entries(predictions)) {
+                    const isPositive = sentiment === "Positive";
+                    const colorClass = isPositive ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200";
+                    const dotColor = isPositive ? "bg-green-500" : "bg-red-500";
+
+                    // Format the model name to look prettier (e.g. linear_imdb -> Linear IMDB)
+                    const prettyName = modelName.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                    document.getElementById('predictionsGrid').innerHTML += `
+                        <div class="flex items-center justify-between p-4 border rounded-lg ${colorClass} shadow-sm">
+                            <span class="font-medium tracking-wide">${prettyName}</span>
+                            <div class="flex items-center space-x-2 bg-white px-3 py-1 rounded-full shadow-sm">
+                                <span class="w-2.5 h-2.5 rounded-full ${dotColor}"></span>
+                                <span class="font-bold">${sentiment}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('metaContainer').classList.remove('hidden');
+                document.getElementById('resultsContainer').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Failed to connect to the API. Make sure uvicorn app:app --reload is running.");
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
