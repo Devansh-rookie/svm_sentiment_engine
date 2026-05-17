@@ -89,3 +89,5 @@ While this TF-IDF + SVM baseline proved highly efficient and mathematically fasc
 2.  **Sarcasm:** SVMs cannot easily parse complex negation or semantic sarcasm.
 
 **Next Steps:** As part of a Deep Learning curriculum, the next logical evolution of this engine is to replace the SVM with a neural architecture—such as an **LSTM (Long Short-Term Memory)** network or a **Transformer (BERT)**. These models natively capture sequential context and attention, resolving the sparsity issues that crashed the SVMs, though they require exponentially higher computational resources.
+
+Pretrained Models: https://drive.google.com/drive/folders/1tgI1Mt1VE-MYzEfAXSvgnsGgDSwqLTUG?usp=sharing
