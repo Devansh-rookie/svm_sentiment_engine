@@ -2,6 +2,14 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
+import sklearn.compose._column_transformer
+
+# Monkey-patch for scikit-learn < 1.5 or > 1.7 compatibility when unpickling 1.5 models
+if not hasattr(sklearn.compose._column_transformer, '_RemainderColsList'):
+    class _RemainderColsList(list):
+        def __repr__(self):
+            return "remainder"
+    sklearn.compose._column_transformer._RemainderColsList = _RemainderColsList
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (

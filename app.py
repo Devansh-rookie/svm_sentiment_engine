@@ -88,6 +88,14 @@ from nltk.corpus import stopwords
 import os
 import glob
 import pandas as pd
+import sklearn.compose._column_transformer
+
+# Monkey-patch for scikit-learn < 1.5 or > 1.7 compatibility when unpickling 1.5 models
+if not hasattr(sklearn.compose._column_transformer, '_RemainderColsList'):
+    class _RemainderColsList(list):
+        def __repr__(self):
+            return "remainder"
+    sklearn.compose._column_transformer._RemainderColsList = _RemainderColsList
 
 # --- 1. Setup & Model Loading ---
 app = FastAPI(title="Multi-Model Sentiment Analysis Engine")
