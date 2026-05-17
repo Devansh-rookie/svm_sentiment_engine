@@ -88,6 +88,7 @@ from nltk.corpus import stopwords
 import os
 import glob
 import pandas as pd
+import numpy as np
 import sklearn.compose._column_transformer
 
 # Monkey-patch for scikit-learn < 1.5 or > 1.7 compatibility when unpickling 1.5 models
@@ -96,6 +97,16 @@ if not hasattr(sklearn.compose._column_transformer, '_RemainderColsList'):
         def __repr__(self):
             return "remainder"
     sklearn.compose._column_transformer._RemainderColsList = _RemainderColsList
+
+# Peak evaluation accuracies achieved by each model across all benchmark domains (IMDB, Twitter, Combined)
+MODEL_ACCURACIES = {
+    "linear_imdb": 0.8856,
+    "linear_twitter": 0.7656,
+    "linear_combined": 0.8888,
+    "kernel_imdb": 0.8682,
+    "kernel_twitter": 0.7566,
+    "kernel_combined": 0.8850
+}
 
 # --- 1. Setup & Model Loading ---
 app = FastAPI(title="Multi-Model Sentiment Analysis Engine")
@@ -174,16 +185,65 @@ def predict(request: SentimentRequest):
     
     # Loop through ALL loaded models and store their predictions
     predictions_results = {}
+    total_weight = 0.0
+    weighted_prob_sum = 0.0
+    
     for name, model in models.items():
         try:
             pred_value = model.predict(input_df)[0]
-            predictions_results[name] = "Positive" if pred_value == 1 else "Negative"
+            label = "Positive" if pred_value == 1 else "Negative"
+            
+            # Convert decision function distance to probability/confidence
+            prob_pos = 0.5
+            if hasattr(model, "predict_proba"):
+                try:
+                    probs = model.predict_proba(input_df)[0]
+                    prob_pos = probs[1]
+                except Exception:
+                    pass
+            
+            if prob_pos == 0.5 and hasattr(model, "decision_function"):
+                dist = model.decision_function(input_df)[0]
+                prob_pos = float(1.0 / (1.0 + np.exp(-dist)))
+            
+            conf_val = prob_pos if label == "Positive" else (1.0 - prob_pos)
+            conf_str = f"{conf_val * 100:.1f}%"
+            
+            weight = MODEL_ACCURACIES.get(name, 0.75)
+            total_weight += weight
+            weighted_prob_sum += (weight * prob_pos)
+            
+            predictions_results[name] = {
+                "sentiment": label,
+                "confidence": conf_str,
+                "confidence_val": float(conf_val),
+                "prob_pos": float(prob_pos),
+                "model_accuracy": weight
+            }
         except Exception as e:
-            predictions_results[name] = "Error"
-    
+            predictions_results[name] = {
+                "sentiment": "Error",
+                "confidence": "0%",
+                "confidence_val": 0.0,
+                "prob_pos": 0.5,
+                "model_accuracy": 0.0
+            }
+            
+    final_sentiment = "Neutral"
+    final_conf_str = "0%"
+    if total_weight > 0:
+        final_prob_pos = weighted_prob_sum / total_weight
+        final_sentiment = "Positive" if final_prob_pos >= 0.5 else "Negative"
+        final_conf_val = final_prob_pos if final_sentiment == "Positive" else (1.0 - final_prob_pos)
+        final_conf_str = f"{final_conf_val * 100:.1f}%"
+        
     return {
         "text": raw_text,
         "clean_text_used": cleaned,
         "meta_features": meta,
-        "predictions": predictions_results
+        "predictions": predictions_results,
+        "ensemble_consensus": {
+            "sentiment": final_sentiment,
+            "confidence": final_conf_str
+        }
     }
