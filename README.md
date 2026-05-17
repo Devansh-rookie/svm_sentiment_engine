@@ -83,13 +83,43 @@ The project features a full-stack deployment architecture to evaluate all 6 trai
 
 ---
 
+## 🛠️ Local Installation & Setup
+
+Follow these steps to run the complete ensemble backend and interactive frontend locally on your machine.
+
+### 1. Move to working directory
+```powershell
+cd path/to/your_working_directory
+```
+
+### 2. Create and Activate a Virtual Environment
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+```powershell
+pip install -r requirements.txt
+```
+
+### 4. Download Pretrained Models
+Ensure all serialized model artifacts (`.pkl`) are placed inside the `./models/` directory:
+* [Download Pretrained Models (Google Drive)](https://drive.google.com/drive/folders/1tgI1Mt1VE-MYzEfAXSvgnsGgDSwqLTUG?usp=sharing)
+
+### 5. Start the FastAPI Ensemble Backend
+```powershell
+.\.venv\Scripts\python -m uvicorn app:app --reload --port 8081
+```
+
+### 6. Launch the Interactive UI
+Open `frontend/index.html` directly in any modern web browser to interact with the real-time classification matrix.
+
+---
+
 ## 🔮 Future Improvements & Deep Learning Caveat
 While this TF-IDF + SVM baseline proved highly efficient and mathematically fascinating regarding domain shift, it has inherent algorithmic limitations:
 1.  **Context Loss:** TF-IDF fundamentally ignores sequential word order outside of the defined (1, 2) n-grams.
 2.  **Sarcasm:** SVMs cannot easily parse complex negation or semantic sarcasm.
 
 **Next Steps:** As part of a Deep Learning curriculum, the next logical evolution of this engine is to replace the SVM with a neural architecture—such as an **LSTM (Long Short-Term Memory)** network or a **Transformer (BERT)**. These models natively capture sequential context and attention, resolving the sparsity issues that crashed the SVMs, though they require exponentially higher computational resources.
-
-Pretrained Models: https://drive.google.com/drive/folders/1tgI1Mt1VE-MYzEfAXSvgnsGgDSwqLTUG?usp=sharing
-
-Run Backend Using: uvicorn app:app --reload
